@@ -253,70 +253,100 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         
-        def minimax(state):
-            bestValue, bestAction = None, None
-            print(state.getLegalActions(0))
-            value = []
-            for action in state.getLegalActions(0):
-                if action == 'Stop':
-                    continue
-                #value = max(value,minValue(state.generateSuccessor(0, action), 1, 1))
-                succ  = minValue(state.generateSuccessor(0, action), 1, 1, float("-Inf"), float("Inf"))
-                value.append(succ)
-                if bestValue is None:
-                    bestValue = succ
+        def alphaBeta(state):
+            # Hàm alphaBeta chính - chọn hành động tốt nhất cho Pacman (agent 0)
+            bestValue, bestAction = float("-inf"), None  # Khởi tạo giá trị và hành động tốt nhất
+            alpha, beta = float("-inf"), float("inf")    # Khởi tạo giá trị alpha và beta
+
+# Kiểm tra nếu không có hành động hợp lệ
+            legalActions = state.getLegalActions(0)
+            if not legalActions:
+                return Directions.STOP
+
+            # Duyệt qua tất cả các hành động hợp lệ của Pacman
+            for action in legalActions:
+                # Lấy giá trị của hành động từ hàm minValue (vì đây là ghost's turn tiếp theo)
+                value = minValue(state.generateSuccessor(0, action), 1, 1, alpha, beta)
+
+                # Cập nhật hành động tốt nhất nếu tìm thấy giá trị cao hơn
+                if value > bestValue:
+                    bestValue = value
                     bestAction = action
-                else:
-                    if succ > bestValue:
-                        bestValue = succ
-                        bestAction = action
-            print(value)
-            return bestAction
 
-        def minValue(state, agentIdx, depth, alpha, beta):
-            if agentIdx == state.getNumAgents():
-                return maxValue(state, 0, depth + 1,alpha,beta)
-            value = None
-            for action in state.getLegalActions(agentIdx):
-                if action == 'Stop':
-                    continue
-                succ = minValue(state.generateSuccessor(agentIdx, action), agentIdx + 1, depth,alpha,beta)
-                if value is None:
-                    value = succ
-                else:
-                    value = min(value, succ)
-                    if value <= alpha:
-                        return value
-                    beta = min(beta, value)
-            if value is not None:
-                return value
-            else:
-                return self.evaluationFunction(state)
+                # Cập nhật alpha (giá trị tốt nhất cho MAX)
+                alpha = max(alpha, bestValue)
 
+            # Đảm bảo luôn trả về một hành động hợp lệ
+            if bestAction is None and legalActions:
+                bestAction = legalActions[0]
+
+            return bestAction  # Trả về hành động tốt nhất
 
         def maxValue(state, agentIdx, depth, alpha, beta):
+            # Hàm maxValue - chọn giá trị MAX cho Pacman (agent 0)
+
+            # Kiểm tra nếu đã đạt đến độ sâu giới hạn
             if depth > self.depth:
                 return self.evaluationFunction(state)
-            value = None
-            for action in state.getLegalActions(agentIdx):
-                if action == 'Stop':
-                    continue
-                succ = minValue(state.generateSuccessor(agentIdx, action), agentIdx + 1, depth,alpha,beta)
-                if value is None:
-                    value = succ
-                else:
-                    value = max(value, succ)
-                    if value >= beta:
-                        return value
-                    alpha = max(alpha, value)
-            if value is not None:
-                return value
-            else:
+
+            # Kiểm tra nếu không có hành động hợp lệ
+            if len(state.getLegalActions(agentIdx)) == 0:
                 return self.evaluationFunction(state)
 
-        action = minimax(gameState)
+            # Khởi tạo giá trị MIN
+            value = float("-inf")
 
-        return action
+            # Duyệt qua tất cả các hành động hợp lệ
+            for action in state.getLegalActions(agentIdx):
+                # Tính giá trị của successor state bằng cách gọi minValue
+                value = max(value, minValue(state.generateSuccessor(agentIdx, action), 
+                                          agentIdx + 1, depth, alpha, beta))
+
+                # Cắt nhánh beta: nếu value > beta, không cần xét các nhánh còn lại
+                if value > beta:
+                    return value
+
+                # Cập nhật alpha
+                alpha = max(alpha, value)
+
+            return value
+
+        def minValue(state, agentIdx, depth, alpha, beta):
+            # Hàm minValue - chọn giá trị MIN cho ghost (agent >= 1)
+
+            # Kiểm tra nếu trạng thái là win hoặc lose
+            if state.isWin() or state.isLose():
+                return self.evaluationFunction(state)
+
+            # Nếu đã xét hết tất cả các ghost trong một lần lặp
+            if agentIdx == state.getNumAgents():
+                # Chuyển về lượt của Pacman ở độ sâu tiếp theo
+                return maxValue(state, 0, depth + 1, alpha, beta)
+
+            # Khởi tạo giá trị MIN
+            value = float("inf")
+
+            # Duyệt qua tất cả các hành động hợp lệ của ghost
+            for action in state.getLegalActions(agentIdx):
+                # Tính giá trị của successor state
+                value = min(value, minValue(state.generateSuccessor(agentIdx, action), 
+                                          agentIdx + 1, depth, alpha, beta))
+
+                # Cắt nhánh alpha: nếu value < alpha, không cần xét các nhánh còn lại
+                if value < alpha:
+                    return value
+
+                # Cập nhật beta
+                beta = min(beta, value)
+
+            # Trường hợp không có hành động hợp lệ
+            if value == float("inf"):
+                return self.evaluationFunction(state)
+
+            return value
+
+        # Bắt đầu tìm kiếm với hàm alphaBeta từ gameState hiện tại
+        return alphaBeta(gameState)
 
 
 #############################################
