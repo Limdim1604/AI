@@ -49,6 +49,8 @@ class ReflexAgent(Agent):
 
         "Add more of your code here if you want to"
 
+        if not legalMoves[chosenIndex]:
+            return Directions.STOP
         return legalMoves[chosenIndex]
 
     def evaluationFunction(self, currentGameState, action):
@@ -250,100 +252,71 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        def alphaBeta(state):
-            # Hàm alphaBeta chính - chọn hành động tốt nhất cho Pacman (agent 0)
-            bestValue, bestAction = float("-inf"), None  # Khởi tạo giá trị và hành động tốt nhất
-            alpha, beta = float("-inf"), float("inf")    # Khởi tạo giá trị alpha và beta
-            
-# Kiểm tra nếu không có hành động hợp lệ
-            legalActions = state.getLegalActions(0)
-            if not legalActions:
-                return Directions.STOP
-                
-            # Duyệt qua tất cả các hành động hợp lệ của Pacman
-            for action in legalActions:
-                # Lấy giá trị của hành động từ hàm minValue (vì đây là ghost's turn tiếp theo)
-                value = minValue(state.generateSuccessor(0, action), 1, 1, alpha, beta)
-                
-                # Cập nhật hành động tốt nhất nếu tìm thấy giá trị cao hơn
-                if value > bestValue:
-                    bestValue = value
+        
+        def minimax(state):
+            bestValue, bestAction = None, None
+            print(state.getLegalActions(0))
+            value = []
+            for action in state.getLegalActions(0):
+                if action == 'Stop':
+                    continue
+                #value = max(value,minValue(state.generateSuccessor(0, action), 1, 1))
+                succ  = minValue(state.generateSuccessor(0, action), 1, 1, float("-Inf"), float("Inf"))
+                value.append(succ)
+                if bestValue is None:
+                    bestValue = succ
                     bestAction = action
-                
-                # Cập nhật alpha (giá trị tốt nhất cho MAX)
-                alpha = max(alpha, bestValue)
-
-            # Đảm bảo luôn trả về một hành động hợp lệ
-            if bestAction is None and legalActions:
-                bestAction = legalActions[0]
-                
-            return bestAction  # Trả về hành động tốt nhất
-
-        def maxValue(state, agentIdx, depth, alpha, beta):
-            # Hàm maxValue - chọn giá trị MAX cho Pacman (agent 0)
-            
-            # Kiểm tra nếu đã đạt đến độ sâu giới hạn
-            if depth > self.depth:
-                return self.evaluationFunction(state)
-            
-            # Kiểm tra nếu không có hành động hợp lệ
-            if len(state.getLegalActions(agentIdx)) == 0:
-                return self.evaluationFunction(state)
-            
-            # Khởi tạo giá trị MIN
-            value = float("-inf")
-            
-            # Duyệt qua tất cả các hành động hợp lệ
-            for action in state.getLegalActions(agentIdx):
-                # Tính giá trị của successor state bằng cách gọi minValue
-                value = max(value, minValue(state.generateSuccessor(agentIdx, action), 
-                                          agentIdx + 1, depth, alpha, beta))
-                
-                # Cắt nhánh beta: nếu value > beta, không cần xét các nhánh còn lại
-                if value > beta:
-                    return value
-                
-                # Cập nhật alpha
-                alpha = max(alpha, value)
-                
-            return value
+                else:
+                    if succ > bestValue:
+                        bestValue = succ
+                        bestAction = action
+            print(value)
+            return bestAction
 
         def minValue(state, agentIdx, depth, alpha, beta):
-            # Hàm minValue - chọn giá trị MIN cho ghost (agent >= 1)
-            
-            # Kiểm tra nếu trạng thái là win hoặc lose
-            if state.isWin() or state.isLose():
-                return self.evaluationFunction(state)
-            
-            # Nếu đã xét hết tất cả các ghost trong một lần lặp
             if agentIdx == state.getNumAgents():
-                # Chuyển về lượt của Pacman ở độ sâu tiếp theo
-                return maxValue(state, 0, depth + 1, alpha, beta)
-            
-            # Khởi tạo giá trị MIN
-            value = float("inf")
-            
-            # Duyệt qua tất cả các hành động hợp lệ của ghost
+                return maxValue(state, 0, depth + 1,alpha,beta)
+            value = None
             for action in state.getLegalActions(agentIdx):
-                # Tính giá trị của successor state
-                value = min(value, minValue(state.generateSuccessor(agentIdx, action), 
-                                          agentIdx + 1, depth, alpha, beta))
-                
-                # Cắt nhánh alpha: nếu value < alpha, không cần xét các nhánh còn lại
-                if value < alpha:
-                    return value
-                
-                # Cập nhật beta
-                beta = min(beta, value)
-            
-            # Trường hợp không có hành động hợp lệ
-            if value == float("inf"):
+                if action == 'Stop':
+                    continue
+                succ = minValue(state.generateSuccessor(agentIdx, action), agentIdx + 1, depth,alpha,beta)
+                if value is None:
+                    value = succ
+                else:
+                    value = min(value, succ)
+                    if value <= alpha:
+                        return value
+                    beta = min(beta, value)
+            if value is not None:
+                return value
+            else:
                 return self.evaluationFunction(state)
-                
-            return value
 
-        # Bắt đầu tìm kiếm với hàm alphaBeta từ gameState hiện tại
-        return alphaBeta(gameState)
+
+        def maxValue(state, agentIdx, depth, alpha, beta):
+            if depth > self.depth:
+                return self.evaluationFunction(state)
+            value = None
+            for action in state.getLegalActions(agentIdx):
+                if action == 'Stop':
+                    continue
+                succ = minValue(state.generateSuccessor(agentIdx, action), agentIdx + 1, depth,alpha,beta)
+                if value is None:
+                    value = succ
+                else:
+                    value = max(value, succ)
+                    if value >= beta:
+                        return value
+                    alpha = max(alpha, value)
+            if value is not None:
+                return value
+            else:
+                return self.evaluationFunction(state)
+
+        action = minimax(gameState)
+
+        return action
 
 
 #############################################
@@ -374,7 +347,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
                     bestValue = value
                     bestAction = action
                     
-            return bestAction  # Trả về hành động tốt nhất
+            return bestAction if bestAction is not None else Directions.STOP
 
         def maxValue(state, agentIdx, depth):
             # Hàm maxValue - chọn giá trị MAX cho Pacman (agent 0)
@@ -473,215 +446,6 @@ def betterEvaluationFunction(currentGameState):
     return -2 * closestFood + ghost_distance - 10 * len(foodList) + closest_capsule
 
 
-# def newAdvancedEvaluationFunction(currentGameState):
-#     """
-#     Hàm đánh giá nâng cao với chiến lược tối ưu để Pacman đạt hiệu suất cao nhất:
-    
-#     Chiến lược tối ưu:
-#     1. Xử lý ưu tiên cao nhất cho trạng thái thắng/thua tức thì
-#     2. Đánh giá food dựa trên số lượng và phân bố không gian
-#     3. Phân tích chi tiết các ghost (nguy hiểm vs có thể ăn)
-#     4. Sử dụng capsule có chiến lược dựa vào hoàn cảnh
-#     5. Tận dụng tối đa thời gian scared của ghost
-#     6. Thay đổi chiến thuật theo tiến độ trò chơi
-#     """
-#     # Ưu tiên cao nhất: Trạng thái kết thúc
-#     if currentGameState.isWin():
-#         return float('inf')
-#     if currentGameState.isLose():
-#         return float('-inf')
-    
-#     # Thu thập thông tin trạng thái
-#     position = currentGameState.getPacmanPosition()
-#     food = currentGameState.getFood()
-#     ghostStates = currentGameState.getGhostStates()
-#     capsules = currentGameState.getCapsules()
-#     score = currentGameState.getScore() 
-    
-#     # === ĐÁNH GIÁ FOOD ===
-#     foodList = food.asList()
-#     foodCount = len(foodList)
-    
-#     # Tính toán khoảng cách đến food
-#     if foodList:
-#         # Khoảng cách đến tất cả các food
-#         foodDistances = [manhattanDistance(position, foodPos) for foodPos in foodList]
-#         # Food gần nhất
-#         closestFoodDist = min(foodDistances)
-        
-#         # Phân cụm food - tìm 5 food gần nhất (nếu có)
-#         sortedFoodDist = sorted(foodDistances)[:min(5, len(foodDistances))]
-#         avgNearFoodDist = sum(sortedFoodDist) / len(sortedFoodDist)
-        
-#         # Phân tích phân bố food
-#         stdDevFood = sum((dist - avgNearFoodDist)**2 for dist in sortedFoodDist)
-#         if len(sortedFoodDist) > 1:
-#             stdDevFood /= len(sortedFoodDist) - 1
-#         stdDevFood = stdDevFood**0.5  # Độ lệch chuẩn của khoảng cách
-#     else:
-#         # Không còn food = thắng
-#         closestFoodDist = 0
-#         avgNearFoodDist = 0
-#         stdDevFood = 0
-    
-#     # === ĐÁNH GIÁ GHOST ===
-#     dangerousGhosts = []  # Ghost thường (nguy hiểm)
-#     edibleGhosts = []     # Ghost scared (có thể ăn)
-#     scaredTimers = []     # Thời gian scared còn lại
-    
-#     # Phân loại ghost
-#     for ghost in ghostStates:
-#         if ghost.scaredTimer > 0:
-#             edibleGhosts.append(ghost)
-#             scaredTimers.append(ghost.scaredTimer)
-#         else:
-#             dangerousGhosts.append(ghost)
-    
-#     # === ĐÁNH GIÁ GHOST NGUY HIỂM ===
-#     dangerScore = 0
-#     minDangerousDist = float('inf')
-    
-#     if dangerousGhosts:
-#         # Khoảng cách đến ghost nguy hiểm
-#         dangerDistances = [manhattanDistance(position, ghost.getPosition()) for ghost in dangerousGhosts]
-#         minDangerousDist = min(dangerDistances)
-        
-#         # Độ nguy hiểm dựa trên khoảng cách
-#         if minDangerousDist <= 1:  # Ghost sát bên - cực kỳ nguy hiểm
-#             dangerScore = -1000
-#         elif minDangerousDist <= 2:  # Ghost rất gần - nguy hiểm cao
-#             dangerScore = -500
-#         elif minDangerousDist < 4:  # Ghost gần - cần chú ý
-#             dangerScore = -200 / minDangerousDist
-#         else:  # Ghost ở xa - ít nguy hiểm
-#             dangerScore = 50  # Ghost ở xa là an toàn, nên thưởng điểm
-#     else:
-#         # Không có ghost nguy hiểm = an toàn
-#         dangerScore = 100
-    
-#     # === ĐÁNH GIÁ GHOST CÓ THỂ ĂN ===
-#     edibleGhostScore = 0
-#     canEatGhosts = False
-    
-#     for ghost in edibleGhosts:
-#         ghostPos = ghost.getPosition()
-#         dist = manhattanDistance(position, ghostPos)
-#         remainingScaredTime = ghost.scaredTimer
-        
-#         # Kiểm tra xem có thể ăn ghost này không
-#         if dist < remainingScaredTime:
-#             # Cân bằng giữa lợi ích và thời gian còn lại
-#             timeValue = remainingScaredTime - dist  # Lượng thời gian dư ra sau khi ăn ghost
-            
-#             # Điểm thưởng cho việc ăn ghost (càng gần càng tốt)
-#             ghostValue = 200 - (dist * 8)
-            
-#             # Ghost ở xa hơn sẽ có giá trị thấp hơn theo hàm mũ
-#             if dist > 3:
-#                 ghostValue *= 0.8
-                
-#             edibleGhostScore += ghostValue
-#             canEatGhosts = True
-    
-#     # === ĐÁNH GIÁ CAPSULE ===
-#     capsuleScore = 0
-#     minCapsuleDist = float('inf')
-    
-#     if capsules:
-#         # Khoảng cách đến các capsule
-#         capsuleDistances = [manhattanDistance(position, caps) for caps in capsules]
-#         minCapsuleDist = min(capsuleDistances)
-        
-#         # Chiến lược capsule thông minh:
-        
-#         # 1. Nếu có ghost nguy hiểm gần, capsule trở nên quý giá
-#         if minDangerousDist < 5:
-#             # Độ cấp bách phụ thuộc vào khoảng cách của ghost nguy hiểm
-#             urgency = max(0, (5 - minDangerousDist)) * 15
-#             capsuleScore = 150 - (minCapsuleDist * urgency)
-            
-#             # Nếu ghost đang rất gần, capsule là ưu tiên hàng đầu
-#             if minDangerousDist <= 2:
-#                 capsuleScore *= 1.5
-                
-#         # 2. Nếu đã có nhiều ghost scared, giảm giá trị của capsule
-#         elif sum(scaredTimers) > 15:
-#             capsuleScore = 30 - minCapsuleDist
-            
-#         # 3. Trường hợp thông thường - capsule có giá trị trung bình
-#         else:
-#             capsuleScore = 70 - (minCapsuleDist * 3)
-    
-#     # === ĐÁNH GIÁ THỜI GIAN SCARED ===
-    
-#     # Tổng thời gian scared còn lại
-#     totalScaredTime = sum(scaredTimers)
-    
-#     # Chiến lược sử dụng thời gian scared
-#     scaredTimeScore = 0
-    
-#     if totalScaredTime > 0:
-#         # Mỗi đơn vị thời gian scared đáng giá 8 điểm
-#         scaredTimeScore = totalScaredTime * 8
-        
-#         # Tính mức độ tối ưu của thời gian scared
-#         timeRemaining = [ghost.scaredTimer for ghost in edibleGhosts]
-#         timeStdDev = 0
-        
-#         if len(timeRemaining) > 1:
-#             avgTime = sum(timeRemaining) / len(timeRemaining)
-#             timeStdDev = sum((t - avgTime)**2 for t in timeRemaining)
-#             timeStdDev = (timeStdDev / (len(timeRemaining) - 1)) ** 0.5
-            
-#             # Thưởng nếu thời gian scared của các ghost đồng đều
-#             # (nghĩa là capsule được ăn hợp lý, không chồng chéo thời gian)
-#             if timeStdDev < 5:
-#                 scaredTimeScore += 50
-    
-#     # === CHIẾN LƯỢC GIAI ĐOẠN TRÒ CHƠI ===
-#     progressScore = 0
-#     initialFoodCount = 30  # Ước tính số food ban đầu (có thể điều chỉnh)
-    
-#     # Tính tiến trình trò chơi dựa trên số food đã ăn
-#     progressPercentage = 1 - (foodCount / initialFoodCount)
-    
-#     # Đầu game: Tập trung vào capsule và an toàn
-#     if progressPercentage < 0.3:
-#         progressScore = capsuleScore * 1.2
-        
-#     # Giữa game: Cân bằng giữa ăn ghost và food
-#     elif progressPercentage < 0.7:
-#         if canEatGhosts:
-#             progressScore = edibleGhostScore * 1.3
-#         else:
-#             progressScore = -10 * closestFoodDist
-            
-#     # Cuối game: Ưu tiên cao nhất cho việc ăn nốt food
-#     else:
-#         progressScore = -25 * foodCount - 15 * closestFoodDist
-    
-#     # === TÍNH ĐIỂM TỔNG HỢP ===
-#     finalScore = score  # Bắt đầu từ điểm hiện tại
-    
-#     # Cộng các thành phần điểm
-#     finalScore += progressScore         # Chiến lược theo tiến trình
-#     finalScore += dangerScore           # Tránh ghost nguy hiểm
-#     finalScore += edibleGhostScore      # Săn ghost scared
-#     finalScore += scaredTimeScore       # Tối ưu thời gian scared
-#     finalScore -= 8 * foodCount         # Ít food là tốt
-#     finalScore -= 2 * closestFoodDist   # Food gần là tốt
-    
-#     # Phạt điểm cho việc có nhiều food gần nhau mà không ăn
-#     if stdDevFood < 2 and len(sortedFoodDist) > 2:
-#         finalScore -= 30  # Phạt nếu có nhiều food gần nhau mà không ăn
-        
-#     # Điều chỉnh cuối cùng dựa trên số lượng food còn lại
-#     if foodCount <= 2:  # Gần thắng
-#         finalScore -= 40 * foodCount
-#         finalScore -= 20 * closestFoodDist
-    
-#     return finalScore
-
 def newEvaluationFunction(currentGameState):
     """
     Một hàm đánh giá thông minh cho Pacman: kết hợp giữa vị trí hiện tại,
@@ -713,7 +477,7 @@ def newEvaluationFunction(currentGameState):
     # --- 1. Khoảng cách đến food gần nhất
     if foodList:
         minFoodDist = min(manhattanDistance(pacmanPos, food) for food in foodList)
-        score += FOOD_WEIGHT / (1 + 2*minFoodDist)  # càng gần càng tốt
+        score += FOOD_WEIGHT / (1 + 2* minFoodDist)  # càng gần càng tốt
         score -= FOOD_COUNT_WEIGHT * len(foodList)  # càng ít food còn lại càng tốt
     else:
         score += 100  # thưởng nếu không còn food
@@ -745,9 +509,10 @@ def newEvaluationFunction(currentGameState):
 
     # --- 4. Tổng scared time
     score += TOTAL_SCARED_TIME_WEIGHT * sum(scaredTimes)
-
     return score
 
 
 # Đặt hàm mới này làm hàm đánh giá mặc định
 better = newEvaluationFunction
+
+#python pacman.py -l testClassic -p ExpectimaxAgent -a depth=3,evalFn=betterEvaluationFunction -s 23520127 -n 5 --frameTime 0
